@@ -1,5 +1,7 @@
 # Decoding and encoding mental representations of objects in the brain
 
+This project is a refined version of: https://github.com/AlexandreAbraham/frontiers2013
+
 *Problem:* 
 
 Neuroimaging, ways of understanding how the brain produces images, produces sets of data that are high-dimensional and complicated. Ways of interpreting this data provides the means for understanding how the brain encodes and decodes images. In this context, encoding refers to predicting the imaging data given external variables, such as stimuli descriptors and decoding refers to learning a model that predicts behavioral or phenotypic variables from fMRI data. With the way these models can be learned and predicted, supervised machine learning methods can be used to decode images to relate brain images to behavioral or clinical observations. Sci-kit learn can be used for this analysis in making predictions that can be cross-validated. 
