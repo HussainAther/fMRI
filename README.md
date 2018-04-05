@@ -1,6 +1,6 @@
 # Decoding and encoding mental representations of objects in the brain
 
-This project is a refined version of: https://github.com/AlexandreAbraham/frontiers2013
+Source: https://github.com/AlexandreAbraham/frontiers2013
 
 *Problem:* 
 
