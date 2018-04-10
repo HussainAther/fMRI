@@ -19,8 +19,11 @@ A further task would be to replace the ridge regression  by a Lasso estimator, w
 ## Requirements
 
 Nilearn (>0.4.1)
+
 Python (>3.0)
+
 Matplotlib (>2.1.0)
+
 Numpy (1.13.0)
 
 ## References
