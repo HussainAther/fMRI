@@ -340,9 +340,8 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
     files: list of (string, string, dict)
         List of files and their corresponding url. The dictionary contains
         options regarding the files. Options supported are 'uncompress' to
-        indicates that the file is an archive, 'md5sum' to check the md5 sum of
-        the file and 'move' if renaming the file or moving it to a subfolder is
-        needed.
+        indicates that the file is an archive and 'move' if renaming the file
+        or moving it to a subfolder is needed.
 
     data_dir: string, optional
         Path of the data directory. Used to force data storage in a specified
@@ -367,9 +366,9 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
         # Download the file if it exists
         abs_file = os.path.join(data_dir, file_)
         if not os.path.exists(abs_file):
-            md5sum = opts.get('md5sum', None)
+
             dl_file = _fetch_file(url, data_dir, resume=resume,
-                                  verbose=verbose, md5sum=md5sum)
+                                  verbose=verbose)
             if 'move' in opts:
                 shutil.move(os.path.join(data_dir, dl_file),
                             os.path.join(data_dir, opts['move']))
