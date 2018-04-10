@@ -57,16 +57,18 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 n_pixels = y_train.shape[1]
 n_features = X_train.shape[1]
 
-### Very simple encoding using ridge regression
+### Very simple encoding using Lasso regression
 
 from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
 from sklearn.cross_validation import KFold
 
-print("Do ridge regression")
+print("Lasso regression")
 estimator = Ridge(alpha=100.)
+estimator = Lasso(alpha=100, normalize=True, max_iter=1e5)
 cv = KFold(len(y_train), 10)
 predictions = [
-        Ridge(alpha=100.).fit(y_train.reshape(-1, 100)[train], X_train[train]
+        estimator.fit(y_train.reshape(-1, 100)[train], X_train[train]
             ).predict(y_train.reshape(-1, 100)[test]) for train, test in cv]
 
 print("Scoring")
@@ -103,8 +105,6 @@ pl.figure(figsize=(8, 8))
 ax1 = pl.axes([0., 0., 1., 1.])
 pl.imshow(bg.get_data()[:, :, 10].T, interpolation="nearest", cmap='gray',
           origin='lower')
-pl.imshow(np.ma.masked_less(sbrain[:, :, 10].T, 1e-6),
-          interpolation="nearest", cmap='hot', origin="lower")
 plot_lines(contour[:, :, 10].T)
 pl.axis('off')
 ax2 = pl.axes([.08, .5, .05, .47])
