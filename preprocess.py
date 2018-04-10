@@ -7,7 +7,7 @@ features
 
 import numpy as np
 from scipy import signal, stats, linalg
-import sklearn.utils.fixes
+#import sklearn.utils.fixes
 from sklearn.utils import gen_even_slices
 
 def _standardize(signals, detrend=False, normalize=True):
