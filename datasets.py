@@ -28,33 +28,6 @@ def _format_time(t):
         return " %5.1fs" % (t)
 
 
-def _md5_sum_file(path):
-    """ Calculates the MD5 sum of a file.
-    """
-    f = open(path, 'rb')
-    m = hashlib.md5()
-    while True:
-        data = f.read(8192)
-        if not data:
-            break
-        m.update(data)
-    return m.hexdigest()
-
-
-def _read_md5_sum_file(path):
-    """ Reads a MD5 checksum file and returns hashes as a dictionary.
-    """
-    f = open(path, "r")
-    hashes = {}
-    while True:
-        line = f.readline()
-        if not line:
-            break
-        h, name = line.rstrip().split('  ', 1)
-        hashes[name] = h
-    return hashes
-
-
 class ResumeURLOpener(urllib2.FancyURLopener):
     """Create sub-class in order to overide error 206.  This error means a
        partial file is being sent, which is fine in this case.
@@ -255,7 +228,7 @@ def _uncompress_file(file_, delete_archive=True):
 
 
 def _fetch_file(url, data_dir, resume=True, overwrite=False,
-                md5sum=None, verbose=0):
+                verbose=0):
     """Load requested file, downloading it if needed or requested.
 
     Parameters
@@ -272,9 +245,6 @@ def _fetch_file(url, data_dir, resume=True, overwrite=False,
 
     overwrite: bool, optional
         If true and file already exists, delete it.
-
-    md5sum: string, optional
-        MD5 sum of the file. Checked if download of the file is required
 
     verbose: int, optional
         Defines the level of verbosity of the output
@@ -355,10 +325,6 @@ def _fetch_file(url, data_dir, resume=True, overwrite=False,
         if local_file is not None:
             if not local_file.closed:
                 local_file.close()
-    if md5sum is not None:
-        if (_md5_sum_file(full_name) != md5sum):
-            raise ValueError("File %s checksum verification has failed."
-                             " Dataset fetching aborted." % local_file)
     return full_name
 
 

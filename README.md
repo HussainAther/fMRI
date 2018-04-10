@@ -8,6 +8,8 @@ Neuroimaging, ways of understanding how the brain produces images, produces sets
 
 I re-create the methods of Miyawaki et al. (2008) in inferring visual stimulus from brain activity. In the experiment of Miyawaki et al. (2008) several series of 10×10 binary images are presented to two subjects while activity on the visual cortex is recorded. In the original paper, the training set is composed of random images (where black and white pixels are balanced) while the testing set is composed of structured images containing geometric shapes (square, cross…) and letters. I will use the training set with cross-validation to get scores on unknown data. I can examine decoding (the reconstruction of visual stimuli from fMRI) and encoding (prediction of fMRI data from descriptors of visual stimuli). This would let me look at the relation between stimuli pixels and brains voxels from both angles. The approach uses a support vector classifier and logistic ridge regression in the prediction function in both the decoding and the encoding. 
 
+This repository uses a modified version of the code from: https://github.com/AlexandreAbraham/frontiers2013
+
 ## Usage
 
 `python decode.py` for decoding

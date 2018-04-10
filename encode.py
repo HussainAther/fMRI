@@ -71,6 +71,7 @@ estimator_ridge = Ridge(alpha=100, normalize=True, max_iter=1e5)
 
 print("Lasso regression")
 estimator_lasso = Lasso(alpha=100, normalize=True, max_iter=1e5)
+
 cv = KFold(len(y_train), 10)
 predictions_lasso = [
         estimator_lasso.fit(y_train.reshape(-1, 100)[train], X_train[train]
