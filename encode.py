@@ -57,14 +57,16 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 n_pixels = y_train.shape[1]
 n_features = X_train.shape[1]
 
-### Very simple encoding using Lasso regression
+### Encoding using Lasso regression and Ridge regression
 
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
 from sklearn.cross_validation import KFold
 
-print("Lasso regression")
+print("Ridge regression")
 estimator_ridge = Ridge(alpha=100, normalize=True, max_iter=1e5)
+
+print("Lasso regression")
 estimator_lasso = Lasso(alpha=100, normalize=True, max_iter=1e5)
 cv = KFold(len(y_train), 10)
 predictions_lasso = [
@@ -75,9 +77,13 @@ predictions_ridge = [
             ).predict(y_train.reshape(-1, 100)[test]) for train, test in cv]
 
 print("Scoring")
-scores = [1. - (((X_train[test] - pred) ** 2).sum(axis=0) /
+scores_ridge = [1. - (((X_train[test] - pred) ** 2).sum(axis=0) /
            ((X_train[test] - X_train[test].mean(axis=0)) ** 2).sum(axis=0))
-for pred, (train, test) in zip(predictions, cv)]
+for pred, (train, test) in zip(predictions_ridge, cv)]
+
+scores_lasso = [1. - (((X_train[test] - pred) ** 2).sum(axis=0) /
+           ((X_train[test] - X_train[test].mean(axis=0)) ** 2).sum(axis=0))
+for pred, (train, test) in zip(predictions_lasso, cv)]
 
 ### Show scores
 
@@ -99,8 +105,7 @@ def plot_lines(mask, linewidth=3, color='b'):
             pl.gca().add_line(Line2D([j + .5, j + .5], [i - .5, i + .5],
                 color=color, linewidth=linewidth))
 
-
-sbrain = masking.unmask(np.array(scores).mean(0), dataset.mask)
+sbrain_ridge = masking.unmask(np.array(scores_ridge).mean(0), dataset.mask)
 
 bg = nibabel.load(os.path.join('bg.nii.gz'))
 
@@ -108,6 +113,8 @@ pl.figure(figsize=(8, 8))
 ax1 = pl.axes([0., 0., 1., 1.])
 pl.imshow(bg.get_data()[:, :, 10].T, interpolation="nearest", cmap='gray',
           origin='lower')
+pl.imshow(np.ma.masked_less(sbrain_ridge[:, :, 10].T, 1e-6),
+          interpolation="nearest", cmap='hot', origin="lower")
 plot_lines(contour[:, :, 10].T)
 pl.axis('off')
 ax2 = pl.axes([.08, .5, .05, .47])
@@ -116,9 +123,30 @@ cb.ax.yaxis.set_ticks_position('left')
 cb.ax.yaxis.set_tick_params(labelcolor='white')
 cb.ax.yaxis.set_tick_params(labelsize=20)
 cb.set_ticks(np.arange(0., .8, .2))
-pl.savefig(os.path.join('output', 'encoding_scores.pdf'))
-pl.savefig(os.path.join('output', 'encoding_scores.png'))
-pl.savefig(os.path.join('output', 'encoding_scores.eps'))
+pl.savefig(os.path.join('output', 'encoding_scores_ridge.pdf'))
+pl.savefig(os.path.join('output', 'encoding_scores_ridge.png'))
+pl.savefig(os.path.join('output', 'encoding_scores_ridge.eps'))
+pl.clf()
+
+sbrain_lasso = masking.unmask(np.array(scores_lasso).mean(0), dataset.mask)
+
+pl.figure(figsize=(8, 8))
+ax1 = pl.axes([0., 0., 1., 1.])
+pl.imshow(bg.get_data()[:, :, 10].T, interpolation="nearest", cmap='gray',
+          origin='lower')
+pl.imshow(np.ma.masked_less(sbrain_lasso[:, :, 10].T, 1e-6),
+          interpolation="nearest", cmap='hot', origin="lower")
+plot_lines(contour[:, :, 10].T)
+pl.axis('off')
+ax2 = pl.axes([.08, .5, .05, .47])
+cb = pl.colorbar(cax=ax2, ax=ax1)
+cb.ax.yaxis.set_ticks_position('left')
+cb.ax.yaxis.set_tick_params(labelcolor='white')
+cb.ax.yaxis.set_tick_params(labelsize=20)
+cb.set_ticks(np.arange(0., .8, .2))
+pl.savefig(os.path.join('output', 'encoding_scores_lasso.pdf'))
+pl.savefig(os.path.join('output', 'encoding_scores_lasso.png'))
+pl.savefig(os.path.join('output', 'encoding_scores_lasso.eps'))
 pl.clf()
 
 ### Compute receptive fields
