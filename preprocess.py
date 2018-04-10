@@ -9,16 +9,13 @@ import numpy as np
 from scipy import signal, stats, linalg
 from sklearn.utils import gen_even_slices
 
-def _standardize(signals, detrend=False, normalize=True):
+def _standardize(signals, normalize=True):
     """ Center and norm a given signal (time is along first axis)
 
     Parameters
     ==========
     signals: numpy.ndarray
         Timeseries to standardize
-
-    detrend: bool
-        if detrending of timeseries is requested
 
     normalize: bool
         if True, shift timeseries to zero mean value and scale
@@ -32,10 +29,6 @@ def _standardize(signals, detrend=False, normalize=True):
     signals = signals.copy()
 
     if normalize == True:
-        # remove mean if not already detrended
-        if detrend == False:
-            signals -= signals.mean(axis=0)
-
         std = np.sqrt((signals ** 2).sum(axis=0))
         std[std < np.finfo(np.float).eps] = 1.  # avoid numerical problems
         signals /= std
@@ -69,7 +62,7 @@ def _mean_of_squares(signals):
     return var
 
 
-def _detrend(signals, inplace=False, type="linear", 10):
+def _detrend(signals, inplace=False, type="linear"):
     """Detrend columns of input array.
 
     Signals are supposed to be columns of `signals`.
@@ -115,7 +108,7 @@ def _detrend(signals, inplace=False, type="linear", 10):
 
 
 
-def clean(signals, detrend=True, standardize=True, confounds=None,
+def clean(signals, confounds=None,
           low_pass=None, high_pass=None, t_r=2.5):
     """Improve SNR on masked fMRI signals.
 
@@ -155,12 +148,6 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
        low_pass, high_pass: float
            Respectively low and high cutoff frequencies, in Hertz.
 
-       detrend: bool
-           If detrending should be applied on timeseries (before
-           confound removal)
-
-       standardize: bool
-           If True, returned signals are set to unit variance.
 
        Returns
        =======
@@ -188,7 +175,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # If confounds are to be removed, then force normalization to improve
         # matrix conditioning.
         normalize = True
-    signals = _standardize(signals, normalize=normalize, detrend=detrend)
+    signals = _standardize(signals, normalize=normalize)
 
     # Remove confounds
     if confounds is not None:
@@ -223,7 +210,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # Restrict the signal to the orthogonal of the confounds
         confounds = np.hstack(all_confounds)
         del all_confounds
-        confounds = _standardize(confounds, normalize=True, detrend=detrend)
+        confounds = _standardize(confounds, normalize=True)
         Q = qr_economic(confounds)[0]
         signals -= np.dot(Q, np.dot(Q.T, signals))
 
@@ -231,8 +218,8 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         signals = butterworth(signals, sampling_rate=1. / t_r,
                               low_pass=low_pass, high_pass=high_pass)
 
-    if standardize:
-        signals = _standardize(signals, normalize=True, detrend=False)
-        signals *= np.sqrt(signals.shape[0])  # for unit variance
+
+    signals = _standardize(signals, normalize=True)
+    signals *= np.sqrt(signals.shape[0])  # for unit variance
 
     return signals

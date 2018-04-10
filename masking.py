@@ -11,7 +11,7 @@ import nibabel
 ###############################################################################
 
 def apply_mask(niimgs, mask_img, dtype=np.float32,
-                     smoothing_fwhm=None, ensure_finite=True):
+                     ensure_finite=True):
     """Extract signals from images using specified mask.
 
     Read the time series from the given nifti images or filepaths,
@@ -25,10 +25,6 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
     mask_img: niimg
         3D mask array: True where a voxel should be used.
 
-    smoothing_fwhm: float
-        (optional) Gives the size of the spatial smoothing to apply to
-        the signal, in voxels. Implies ensure_finite=True.
-
     ensure_finite: bool
         If ensure_finite is True (default), the non-finite values (NaNs and
         infs) found in the images will be replaced by zeros.
@@ -38,10 +34,6 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
     session_series: numpy.ndarray
         2D array of series with shape (image number, voxel number)
 
-    Notes
-    -----
-    When using smoothing, ensure_finite is set to True, as non-finite
-    values would spread accross the image.
     """
 
     if isinstance(mask_img, str):
@@ -49,8 +41,6 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
     mask_data = mask_img.get_data().astype(bool)
     mask_affine = mask_img.get_affine()
 
-    if smoothing_fwhm is not None:
-        ensure_finite = True
 
     if isinstance(niimgs, str):
         niimgs = nibabel.load(niimgs)
@@ -67,13 +57,11 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
 
     # All the following has been optimized for C order.
     # Time that may be lost in conversion here is regained multiple times
-    # afterward, especially if smoothing is applied.
+    # afterward
     data = niimgs.get_data()
     series = np.asarray(data)
     del data, niimgs  # frees a lot of memory
 
-    _smooth_array(series, affine, fwhm=smoothing_fwhm,
-                  ensure_finite=ensure_finite, copy=False)
     return series[mask_data].T
 
 
@@ -93,14 +81,7 @@ def unmask(X, mask_img, order="C"):
         mask_img = nibabel.load(mask_img)
     mask_data = mask_img.get_data().astype(bool)
 
-    if X.ndim == 1:
-        data = np.zeros(
-            (mask_data.shape[0], mask_data.shape[1], mask_data.shape[2]),
-            dtype=X.dtype, order=order)
-        data[mask_data] = X
-        return data
-    elif X.ndim == 2:
-        data = np.zeros(mask_data.shape + (X.shape[0],), dtype=X.dtype, order=order)
-        data[mask_data, :] = X.T
-        return data
-    raise ValueError("X must be 1-dimensional or 2-dimensional")
+    data = np.zeros(mask_data.shape + (X.shape[0],), dtype=X.dtype, order=order)
+    data[mask_data, :] = X.T
+    return data
+

@@ -40,7 +40,7 @@ for x_random in X_random:
     # Mask data
     x_img = nibabel.load(x_random)
     x = masking.apply_mask(x_img, dataset.mask)
-    x = preprocess.clean(x, standardize=True, detrend=True)
+    x = preprocess.clean(x)
     X_train.append(x)
 
 # Load target data
