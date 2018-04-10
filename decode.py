@@ -1,4 +1,8 @@
 from matplotlib.colors import LinearSegmentedColormap
+
+import matplotlib as mpl
+mpl.use('TkAgg')
+
 import numpy as np
 import sys
 import time

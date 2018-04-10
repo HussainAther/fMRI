@@ -1,5 +1,8 @@
 from matplotlib.colors import LinearSegmentedColormap
 
+import matplotlib as mpl
+mpl.use('TkAgg')
+
 import numpy as np
 import pylab as pl
 import nibabel
@@ -177,7 +180,7 @@ for index in [1700, 1800, 1900, 2000]:
 
 
 ### Plot the colorbar #########################################################
-import matplotlib as mpl
+
 
 fig = pl.figure(figsize=(2.4, .4))
 norm = mpl.colors.Normalize(vmin=0., vmax=.75)
