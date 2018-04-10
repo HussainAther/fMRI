@@ -64,11 +64,14 @@ from sklearn.linear_model import Lasso
 from sklearn.cross_validation import KFold
 
 print("Lasso regression")
-estimator = Ridge(alpha=100.)
-estimator = Lasso(alpha=100, normalize=True, max_iter=1e5)
+estimator_ridge = Ridge(alpha=100, normalize=True, max_iter=1e5)
+estimator_lasso = Lasso(alpha=100, normalize=True, max_iter=1e5)
 cv = KFold(len(y_train), 10)
-predictions = [
-        estimator.fit(y_train.reshape(-1, 100)[train], X_train[train]
+predictions_lasso = [
+        estimator_lasso.fit(y_train.reshape(-1, 100)[train], X_train[train]
+            ).predict(y_train.reshape(-1, 100)[test]) for train, test in cv]
+predictions_ridge = [
+        estimator_ridge.fit(y_train.reshape(-1, 100)[train], X_train[train]
             ).predict(y_train.reshape(-1, 100)[test]) for train, test in cv]
 
 print("Scoring")
