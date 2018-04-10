@@ -1,3 +1,10 @@
+output/encoding_scores_lasso.eps
+output/encoding_scores_lasso.pdf
+output/encoding_scores_lasso.png
+output/encoding_scores_ridge.eps
+output/encoding_scores_ridge.pdf
+output/encoding_scores_ridge.png
+
 output/encoding_1*
 output/encoding_2*
 output/encoding_scores.eps
