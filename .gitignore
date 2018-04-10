@@ -1,0 +1,13 @@
+output/encoding_1*
+output/encoding_2*
+output/encoding_scores.eps
+output/encoding_scores.png
+output/lr*
+output/pixel*
+output/rf*
+output/scores*
+output/svc*
+
+.DS_Store
+__pycache__/
+nilearn_data/
