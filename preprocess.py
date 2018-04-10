@@ -5,14 +5,10 @@ All functions in this module should take X matrices with samples x
 features
 """
 
-import distutils.version
-
 import numpy as np
 from scipy import signal, stats, linalg
 import sklearn.utils.fixes
 from sklearn.utils import gen_even_slices
-
-np_version = distutils.version.LooseVersion(np.version.short_version).version
 
 def _standardize(signals, detrend=False, normalize=True):
     """ Center and norm a given signal (time is along first axis)
@@ -377,11 +373,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
                 filename = confound
                 confound = np.genfromtxt(filename)
                 if np.isnan(confound.flat[0]):
-                    # There may be a header
-                    if np_version >= [1, 4, 0]:
-                        confound = np.genfromtxt(filename, skip_header=1)
-                    else:
-                        confound = np.genfromtxt(filename, skiprows=1)
+                    confound = np.genfromtxt(filename, skiprows=1)
                 if confound.shape[0] != signals.shape[0]:
                     raise ValueError("Confound signal has an incorrect length")
 
