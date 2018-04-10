@@ -14,7 +14,6 @@ from sklearn.utils import gen_even_slices
 
 np_version = distutils.version.LooseVersion(np.version.short_version).version
 
-
 def _standardize(signals, detrend=False, normalize=True):
     """ Center and norm a given signal (time is along first axis)
 
