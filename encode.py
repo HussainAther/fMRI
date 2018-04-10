@@ -177,7 +177,7 @@ for index in [1780, 1951, 2131, 1935]:
 
 ### Plot the colorbar #########################################################
 import matplotlib as mpl
-
+mpl.use('TkAgg')
 
 fig = pl.figure(figsize=(2.4, .4))
 norm = mpl.colors.Normalize(vmin=0., vmax=.75)
