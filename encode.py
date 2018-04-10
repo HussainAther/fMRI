@@ -163,7 +163,6 @@ p = (4, 2)
 pixmask = np.zeros((10, 10), dtype=bool)
 pixmask[p] = 1
 
-#for index in [1780, 1951, 2131, 1935]:
 for index in [1700, 1800, 1900, 2000]:
     rf = lasso.fit(y_train, X_train[:, index]).coef_.reshape(10, 10)
     pl.figure(figsize=(8, 8))

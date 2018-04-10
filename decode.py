@@ -231,7 +231,7 @@ if not os.path.exists(cache_path):
 logr_scores = np.load(cache_path)
 sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 
-sys.stderr.write("\Linear regression...")
+sys.stderr.write("\tLinear regression...")
 t0 = time.time()
 cache_path = os.path.join('output', 'linR_scores.npy')
 if not os.path.exists(cache_path):
