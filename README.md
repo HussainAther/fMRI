@@ -24,7 +24,7 @@ Python (>3.0)
 
 Matplotlib (>=2.2.0)
 
-Numpy (1.13.0)
+Numpy 
 
 ## References
 
