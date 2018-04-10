@@ -21,7 +21,6 @@ from sklearn.datasets.base import Bunch
 
 import nibabel
 
-
 def _format_time(t):
     if t > 60:
         return "%4.1fmin" % (t / 60.)

@@ -68,12 +68,13 @@ import pylab as pl
 import os
 
 from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression as LR
+from sklearn.linear_model import LogisticRegression as LogR
+from sklearn.linear_model import LinearRegression as LinR
 from sklearn.feature_selection import f_classif, SelectKBest
 
 sys.stderr.write("Single pixel prediction\n")
 
-# Pixel chose for the study
+# Pixel chosen for the study
 p = (4, 2)
 
 # Get index of the chosen pixel in flattened array
@@ -82,12 +83,23 @@ i_p = 42
 # Logistic Regression
 sys.stderr.write("\tLogistic regression...")
 t0 = time.time()
-cache_path = os.path.join('output', 'lr_coef.npy')
+cache_path = os.path.join('output', 'logr_coef.npy')
 if not os.path.exists(cache_path):
-    lr = LR(penalty='l1', C=0.05)
-    lr.fit(X_train, y_train[:, i_p])
-    np.save(cache_path, lr.coef_)
-lr_coef = np.load(cache_path)
+    logr = LogR(penalty='l1', C=0.05)
+    logr.fit(X_train, y_train[:, i_p])
+    np.save(cache_path, logr.coef_)
+logr_coef = np.load(cache_path)
+sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
+
+# Linear Regression
+sys.stderr.write("\tLinear regression...")
+t0 = time.time()
+cache_path = os.path.join('output', 'logr_coef.npy')
+if not os.path.exists(cache_path):
+    linr = LinR(penalty='l1', C=0.05)
+    linr.fit(X_train, y_train[:, i_p])
+    np.save(cache_path, logr.coef_)
+linr_coef = np.load(cache_path)
 sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 
 # Support Vector Classifier
@@ -126,7 +138,7 @@ def plot_lines(mask, linewidth=3, color='b'):
 
 fig = pl.figure(figsize=(8, 8))
 ax1 = pl.axes([0., 0., 1., 1.])
-sbrain = masking.unmask(lr_coef[0], dataset.mask)
+sbrain = masking.unmask(logr_coef[0], dataset.mask)
 bg = nibabel.load(os.path.join('bg.nii.gz'))
 pl.imshow(bg.get_data()[:, :, 10].T, interpolation="nearest", cmap='gray',
           origin='lower')
@@ -144,7 +156,30 @@ pl.savefig(os.path.join('output', 'pixel_logistic.pdf'))
 pl.savefig(os.path.join('output', 'pixel_logistic.png'))
 pl.savefig(os.path.join('output', 'pixel_logistic.eps'))
 sys.stderr.write("Logistic regression: %d nonzero voxels\n" %
-        np.sum(lr_coef != 0.))
+        np.sum(logr_coef != 0.))
+pl.close()
+
+fig = pl.figure(figsize=(8, 8))
+ax1 = pl.axes([0., 0., 1., 1.])
+sbrain = masking.unmask(linr_coef[0], dataset.mask)
+bg = nibabel.load(os.path.join('bg.nii.gz'))
+pl.imshow(bg.get_data()[:, :, 10].T, interpolation="nearest", cmap='gray',
+          origin='lower')
+pl.imshow(np.ma.masked_equal(sbrain[:, :, 10].T, 0.), interpolation="nearest",
+          cmap=bluegreen, origin='lower', vmin=0., vmax=2.6)
+plot_lines(contour[:, :, 10].T, color='r')
+pl.axis('off')
+ax2 = pl.axes([.1, .5, .05, .45])
+cb = pl.colorbar(cax=ax2, ax=ax1)
+cb.ax.yaxis.set_ticks_position('left')
+cb.ax.yaxis.set_tick_params(labelcolor='white')
+cb.ax.yaxis.set_tick_params(labelsize=32)
+cb.set_ticks([0., 1.3, 2.6])
+pl.savefig(os.path.join('output', 'pixel_linear.pdf'))
+pl.savefig(os.path.join('output', 'pixel_linear.png'))
+pl.savefig(os.path.join('output', 'pixel_linear.eps'))
+sys.stderr.write("Linear regression: %d nonzero voxels\n" %
+        np.sum(logr_coef != 0.))
 pl.close()
 
 fig = pl.figure(figsize=(8, 8))
@@ -166,7 +201,7 @@ cb.set_ticks([0., .5, 1.])
 pl.savefig(os.path.join('output', 'pixel_svc.pdf'))
 pl.savefig(os.path.join('output', 'pixel_svc.png'))
 pl.savefig(os.path.join('output', 'pixel_svc.eps'))
-sys.stderr.write("SVC: %d nonzero voxels\n" % np.sum(lr_coef != 0.))
+sys.stderr.write("SVC: %d nonzero voxels\n" % np.sum(logr_coef != 0.))
 pl.close()
 
 
@@ -175,8 +210,10 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.externals.joblib import Parallel, delayed
 
-pipeline_LR = Pipeline([('selection', SelectKBest(f_classif, 500)),
-                     ('clf', LR(penalty="l1", C=0.05))])
+pipeline_LogR = Pipeline([('selection', SelectKBest(f_classif, 500)),
+                     ('clf', LogR(penalty="l1", C=0.05))])
+pipeline_LinR = Pipeline([('selection', SelectKBest(f_classif, 500)),
+                     ('clf', LinR(normalize=True))])
 pipeline_SVC = Pipeline([('selection', SelectKBest(f_classif, 500)),
                      ('clf', LinearSVC(penalty='l1', dual=False, C=0.01))])
 pipeline_SVCL2 = Pipeline([('selection', SelectKBest(f_classif, 500)),
@@ -186,12 +223,22 @@ sys.stderr.write("Cross validation\n")
 
 sys.stderr.write("\tLogistic regression...")
 t0 = time.time()
-cache_path = os.path.join('output', 'lr_scores.npy')
+cache_path = os.path.join('output', 'logR_scores.npy')
 if not os.path.exists(cache_path):
     scores_log = Parallel(n_jobs=1)(delayed(cross_val_score)(
-        pipeline_LR, X_train, y, cv=5, verbose=True) for y in y_train.T)
+        pipeline_LogR, X_train, y, cv=5, verbose=True) for y in y_train.T)
     np.save(cache_path, scores_log)
-lr_scores = np.load(cache_path)
+logr_scores = np.load(cache_path)
+sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
+
+sys.stderr.write("\Linear regression...")
+t0 = time.time()
+cache_path = os.path.join('output', 'linR_scores.npy')
+if not os.path.exists(cache_path):
+    scores_log = Parallel(n_jobs=1)(delayed(cross_val_score)(
+        pipeline_LinR, X_train, y, cv=5, verbose=True) for y in y_train.T)
+    np.save(cache_path, scores_log)
+linr_scores = np.load(cache_path)
 sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 
 sys.stderr.write("\tSupport vector classifier...")
@@ -217,7 +264,7 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 ### Output ####################################################################
 
 fig = pl.figure(figsize=(8, 8))
-pl.imshow(np.array(lr_scores).mean(1).reshape(10, 10),
+pl.imshow(np.array(logr_scores).mean(1).reshape(10, 10),
     interpolation="nearest", vmin=.3, vmax=1.)
 plot_lines(pixmask, linewidth=6)
 pl.axis('off')
@@ -225,9 +272,20 @@ pl.hot()
 fig.subplots_adjust(bottom=0., top=1., left=0., right=1.)
 pl.savefig(os.path.join('output', 'scores_log.pdf'))
 pl.savefig(os.path.join('output', 'scores_log.eps'))
-print('Logistic Regression mean accuracy: %f' % lr_scores.mean())
+print('Logistic Regression mean accuracy: %f' % logr_scores.mean())
 pl.close()
 
+fig = pl.figure(figsize=(8, 8))
+pl.imshow(np.array(linr_scores).mean(1).reshape(10, 10),
+    interpolation="nearest", vmin=.3, vmax=1.)
+plot_lines(pixmask, linewidth=6)
+pl.axis('off')
+pl.hot()
+fig.subplots_adjust(bottom=0., top=1., left=0., right=1.)
+pl.savefig(os.path.join('output', 'scores_lin.pdf'))
+pl.savefig(os.path.join('output', 'scores_lin.eps'))
+print('Linear Regression mean accuracy: %f' % linr_scores.mean())
+pl.close()
 
 fig = pl.figure(figsize=(8, 8))
 pl.imshow(np.array(svc_scores).mean(1).reshape(10, 10),
