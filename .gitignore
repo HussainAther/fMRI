@@ -11,3 +11,4 @@ output/svc*
 .DS_Store
 __pycache__/
 nilearn_data/
+.README.md.swp
