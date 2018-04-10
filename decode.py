@@ -3,23 +3,6 @@ import numpy as np
 import sys
 import time
 
-
-### Load the dataset from Miyawaki #####################################################
-from utils import datasets
-dataset = datasets.fetch_miyawaki2008()
-
-# Keep only random runs
-X_random = dataset.func[12:]
-y_random = dataset.label[12:]
-y_shape = (10, 10)
-
-### Preprocess data ###########################################################
-from utils import masking, signal
-import nibabel
-
-sys.stderr.write("Preprocessing data...")
-t0 = time.time()
-
 bluegreen = LinearSegmentedColormap('bluegreen', {
     'red': ((0., 0., 0.),
             (1., 0., 0.)),
@@ -30,6 +13,21 @@ bluegreen = LinearSegmentedColormap('bluegreen', {
              (1., 0., 0.))
     })
 
+### Load the dataset from Miyawaki #####################################################
+import datasets
+dataset = datasets.fetch_miyawaki2008()
+
+# Keep only random runs
+X_random = dataset.func[12:]
+y_random = dataset.label[12:]
+y_shape = (10, 10)
+
+### Preprocess data ###########################################################
+import masking, preprocess
+import nibabel
+
+sys.stderr.write("Preprocessing data...")
+t0 = time.time()
 
 # Load and mask fMRI data
 
@@ -80,7 +78,7 @@ i_p = 42
 # Logistic Regression
 sys.stderr.write("\tLogistic regression...")
 t0 = time.time()
-cache_path = os.path.join('miyawaki', 'lr_coef.npy')
+cache_path = os.path.join('output', 'lr_coef.npy')
 if not os.path.exists(cache_path):
     lr = LR(penalty='l1', C=0.05)
     lr.fit(X_train, y_train[:, i_p])
@@ -91,7 +89,7 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 # Support Vector Classifier
 sys.stderr.write("\tSupport vector classifier...")
 t0 = time.time()
-cache_path = os.path.join('miyawaki', 'svc_coef.npy')
+cache_path = os.path.join('output', 'svc_coef.npy')
 if not os.path.exists(cache_path):
     svc = LinearSVC(penalty='l1', dual=False, C=0.01)
     svc.fit(X_train, y_train[:, i_p])
@@ -138,9 +136,9 @@ cb.ax.yaxis.set_ticks_position('left')
 cb.ax.yaxis.set_tick_params(labelcolor='white')
 cb.ax.yaxis.set_tick_params(labelsize=32)
 cb.set_ticks([0., 1.3, 2.6])
-pl.savefig(os.path.join('miyawaki', 'pixel_logistic.pdf'))
-pl.savefig(os.path.join('miyawaki', 'pixel_logistic.png'))
-pl.savefig(os.path.join('miyawaki', 'pixel_logistic.eps'))
+pl.savefig(os.path.join('output', 'pixel_logistic.pdf'))
+pl.savefig(os.path.join('output', 'pixel_logistic.png'))
+pl.savefig(os.path.join('output', 'pixel_logistic.eps'))
 sys.stderr.write("Logistic regression: %d nonzero voxels\n" %
         np.sum(lr_coef != 0.))
 pl.close()
@@ -161,9 +159,9 @@ cb.ax.yaxis.set_ticks_position('left')
 cb.ax.yaxis.set_tick_params(labelcolor='white')
 cb.ax.yaxis.set_tick_params(labelsize=28)
 cb.set_ticks([0., .5, 1.])
-pl.savefig(os.path.join('miyawaki', 'pixel_svc.pdf'))
-pl.savefig(os.path.join('miyawaki', 'pixel_svc.png'))
-pl.savefig(os.path.join('miyawaki', 'pixel_svc.eps'))
+pl.savefig(os.path.join('output', 'pixel_svc.pdf'))
+pl.savefig(os.path.join('output', 'pixel_svc.png'))
+pl.savefig(os.path.join('output', 'pixel_svc.eps'))
 sys.stderr.write("SVC: %d nonzero voxels\n" % np.sum(lr_coef != 0.))
 pl.close()
 
@@ -184,7 +182,7 @@ sys.stderr.write("Cross validation\n")
 
 sys.stderr.write("\tLogistic regression...")
 t0 = time.time()
-cache_path = os.path.join('miyawaki', 'lr_scores.npy')
+cache_path = os.path.join('output', 'lr_scores.npy')
 if not os.path.exists(cache_path):
     scores_log = Parallel(n_jobs=1)(delayed(cross_val_score)(
         pipeline_LR, X_train, y, cv=5, verbose=True) for y in y_train.T)
@@ -194,7 +192,7 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 
 sys.stderr.write("\tSupport vector classifier...")
 t0 = time.time()
-cache_path = os.path.join('miyawaki', 'svc_scores.npy')
+cache_path = os.path.join('output', 'svc_scores.npy')
 if not os.path.exists(cache_path):
     scores_svc = Parallel(n_jobs=1)(delayed(cross_val_score)(
         pipeline_SVC, X_train, y, cv=5, verbose=True) for y in y_train.T)
@@ -204,7 +202,7 @@ sys.stderr.write(" Done (%.2fs)\n" % (time.time() - t0))
 
 sys.stderr.write("\tSupport vector classifier L2...")
 t0 = time.time()
-cache_path = os.path.join('miyawaki', 'svcl2_scores.npy')
+cache_path = os.path.join('output', 'svcl2_scores.npy')
 if not os.path.exists(cache_path):
     scores_svcl2 = Parallel(n_jobs=1)(delayed(cross_val_score)(
         pipeline_SVCL2, X_train, y, cv=5, verbose=True) for y in y_train.T)
@@ -221,8 +219,8 @@ plot_lines(pixmask, linewidth=6)
 pl.axis('off')
 pl.hot()
 fig.subplots_adjust(bottom=0., top=1., left=0., right=1.)
-pl.savefig(os.path.join('miyawaki', 'scores_log.pdf'))
-pl.savefig(os.path.join('miyawaki', 'scores_log.eps'))
+pl.savefig(os.path.join('output', 'scores_log.pdf'))
+pl.savefig(os.path.join('output', 'scores_log.eps'))
 print('Logistic Regression mean accuracy: %f' % lr_scores.mean())
 pl.close()
 
@@ -234,8 +232,8 @@ plot_lines(pixmask, linewidth=6)
 pl.axis('off')
 pl.hot()
 fig.subplots_adjust(bottom=0., top=1., left=0., right=1.)
-pl.savefig(os.path.join('miyawaki', 'scores_svc.pdf'))
-pl.savefig(os.path.join('miyawaki', 'scores_svc.eps'))
+pl.savefig(os.path.join('output', 'scores_svc.pdf'))
+pl.savefig(os.path.join('output', 'scores_svc.eps'))
 print('SVC L1 mean accuracy: %f' % svc_scores.mean())
 pl.close()
 
@@ -247,14 +245,13 @@ plot_lines(pixmask, linewidth=6)
 pl.axis('off')
 pl.hot()
 fig.subplots_adjust(bottom=0., top=1., left=0., right=1.)
-pl.savefig(os.path.join('miyawaki', 'scores_svcl2.pdf'))
-pl.savefig(os.path.join('miyawaki', 'scores_svcl2.eps'))
+pl.savefig(os.path.join('output', 'scores_svcl2.pdf'))
+pl.savefig(os.path.join('output', 'scores_svcl2.eps'))
 print('SVC L2 mean accuracy: %f' % svcl2_scores.mean())
 pl.close()
 
 ### Plot the colorbar #########################################################
 import matplotlib as mpl
-
 
 fig = pl.figure(figsize=(.6, 3.6))
 cmap = mpl.cm.hot
@@ -263,6 +260,6 @@ cb = mpl.colorbar.ColorbarBase(pl.gca(), cmap=cmap, norm=norm)
 # cb.ax.yaxis.set_ticks_position('left')
 cb.set_ticks(np.arange(0.3, 1.1, 0.1))
 fig.subplots_adjust(bottom=0.03, top=.97, left=0., right=.5)
-pl.savefig(os.path.join('miyawaki', 'scores_colorbar.png'))
-pl.savefig(os.path.join('miyawaki', 'scores_colorbar.pdf'))
-pl.savefig(os.path.join('miyawaki', 'scores_colorbar.eps'))
+pl.savefig(os.path.join('output', 'scores_colorbar.png'))
+pl.savefig(os.path.join('output', 'scores_colorbar.pdf'))
+pl.savefig(os.path.join('output', 'scores_colorbar.eps'))

@@ -1,3 +1,5 @@
+from matplotlib.colors import LinearSegmentedColormap
+
 import numpy as np
 import pylab as pl
 import nibabel
@@ -5,12 +7,18 @@ import os
 import sys
 import time
 
+bluegreen = LinearSegmentedColormap('bluegreen', {
+    'red': ((0., 0., 0.),
+            (1., 0., 0.)),
+    'green': ((0., 0., 0.),
+              (1., 1., 1.)),
+    'blue': ((0., 0.2, 0.2),
+             (0.5, 0.5, 0.5),
+             (1., 0., 0.))
+    })
 
-offset = 2
-
-
-### Load Kamitani dataset #####################################################
-from utils import datasets
+### Load Miyawaki dataset #####################################################
+import datasets
 dataset = datasets.fetch_miyawaki2008()
 
 # Keep only random runs
@@ -19,8 +27,7 @@ y_random = dataset.label[12:]
 y_shape = (10, 10)
 
 ### Preprocess data ###########################################################
-from utils import masking, signal, cm
-
+import masking, preprocess
 
 sys.stderr.write("Preprocessing data...")
 t0 = time.time()
@@ -31,14 +38,14 @@ for x_random in X_random:
     # Mask data
     x_img = nibabel.load(x_random)
     x = masking.apply_mask(x_img, dataset.mask)
-    x = signal.clean(x, standardize=True, detrend=True)
-    X_train.append(x[offset:])
+    x = preprocess.clean(x, standardize=True, detrend=True)
+    X_train.append(x[2:])
 
 # Load target data and reshape it in 2D
 y_train = []
 for y in y_random:
     y_train.append(np.reshape(np.loadtxt(y, dtype=np.int, delimiter=','),
-        (-1,) + y_shape, order='F')[:-offset].astype(float))
+        (-1,) + y_shape, order='F')[:-2].astype(float))
 
 X_train = np.vstack(X_train)
 y_train = np.vstack(y_train)
@@ -90,7 +97,7 @@ def plot_lines(mask, linewidth=3, color='b'):
 
 sbrain = masking.unmask(np.array(scores).mean(0), dataset.mask)
 
-bg = nibabel.load(os.path.join('utils', 'bg.nii.gz'))
+bg = nibabel.load(os.path.join('bg.nii.gz'))
 
 pl.figure(figsize=(8, 8))
 ax1 = pl.axes([0., 0., 1., 1.])
@@ -106,9 +113,9 @@ cb.ax.yaxis.set_ticks_position('left')
 cb.ax.yaxis.set_tick_params(labelcolor='white')
 cb.ax.yaxis.set_tick_params(labelsize=20)
 cb.set_ticks(np.arange(0., .8, .2))
-pl.savefig(os.path.join('miyawaki', 'encoding_scores.pdf'))
-pl.savefig(os.path.join('miyawaki', 'encoding_scores.png'))
-pl.savefig(os.path.join('miyawaki', 'encoding_scores.eps'))
+pl.savefig(os.path.join('output', 'encoding_scores.pdf'))
+pl.savefig(os.path.join('output', 'encoding_scores.png'))
+pl.savefig(os.path.join('output', 'encoding_scores.eps'))
 pl.clf()
 
 ### Compute receptive fields
@@ -128,12 +135,12 @@ for index in [1780, 1951, 2131, 1935]:
     # Black background
     pl.imshow(np.zeros_like(rf), vmin=0., vmax=1., cmap='gray')
     pl.imshow(np.ma.masked_equal(rf, 0.), vmin=0., vmax=0.75,
-            interpolation="nearest", cmap=cm.bluegreen)
+            interpolation="nearest", cmap=bluegreen)
     plot_lines(pixmask, linewidth=6, color='r')
     pl.axis('off')
     pl.subplots_adjust(left=0., right=1., bottom=0., top=1.)
-    pl.savefig(os.path.join('miyawaki', 'encoding_%d.pdf' % index))
-    pl.savefig(os.path.join('miyawaki', 'encoding_%d.eps' % index))
+    pl.savefig(os.path.join('output', 'encoding_%d.pdf' % index))
+    pl.savefig(os.path.join('output', 'encoding_%d.eps' % index))
     pl.clf()
 
 
@@ -143,11 +150,11 @@ import matplotlib as mpl
 
 fig = pl.figure(figsize=(2.4, .4))
 norm = mpl.colors.Normalize(vmin=0., vmax=.75)
-cb = mpl.colorbar.ColorbarBase(pl.gca(), cmap=cm.bluegreen, norm=norm,
+cb = mpl.colorbar.ColorbarBase(pl.gca(), cmap=bluegreen, norm=norm,
                                orientation='horizontal')
 #cb.ax.yaxis.set_ticks_position('left')
 cb.set_ticks([0., 0.38, 0.75])
 fig.subplots_adjust(bottom=0.5, top=1., left=0.08, right=.92)
-pl.savefig(os.path.join('miyawaki', 'rf_colorbar.pdf'))
-pl.savefig(os.path.join('miyawaki', 'rf_colorbar.png'))
-pl.savefig(os.path.join('miyawaki', 'rf_colorbar.eps'))
+pl.savefig(os.path.join('output', 'rf_colorbar.pdf'))
+pl.savefig(os.path.join('output', 'rf_colorbar.png'))
+pl.savefig(os.path.join('output', 'rf_colorbar.eps'))
