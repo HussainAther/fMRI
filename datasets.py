@@ -366,15 +366,8 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
         # Download the file if it exists
         abs_file = os.path.join(data_dir, file_)
         if not os.path.exists(abs_file):
-
             dl_file = _fetch_file(url, data_dir, resume=resume,
                                   verbose=verbose)
-            if 'move' in opts:
-                shutil.move(os.path.join(data_dir, dl_file),
-                            os.path.join(data_dir, opts['move']))
-                dl_file = os.path.join(data_dir, opts['move'])
-            if 'uncompress' in opts:
-                _uncompress_file(dl_file)
         if not os.path.exists(abs_file):
             raise IOError('An error occured while fetching %s' % file_)
         files_.append(abs_file)
