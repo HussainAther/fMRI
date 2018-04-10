@@ -14,6 +14,9 @@ output/pixel*
 output/rf*
 output/scores*
 output/svc*
+output/logr_coef.npy
+output/linR_scores.npy
+output/logR_scores.npy
 
 .DS_Store
 __pycache__/
