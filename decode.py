@@ -13,7 +13,7 @@ bluegreen = LinearSegmentedColormap('bluegreen', {
              (1., 0., 0.))
     })
 
-### Load the dataset from Miyawaki #####################################################
+### Load the Miyawaki dataset #####################################################
 import datasets
 dataset = datasets.fetch_miyawaki2008()
 
@@ -250,7 +250,7 @@ pl.savefig(os.path.join('output', 'scores_svcl2.eps'))
 print('SVC L2 mean accuracy: %f' % svcl2_scores.mean())
 pl.close()
 
-### Plot the colorbar #########################################################
+### Colorbar #########################################################
 import matplotlib as mpl
 
 fig = pl.figure(figsize=(.6, 3.6))
