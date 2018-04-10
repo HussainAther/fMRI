@@ -1,21 +1,21 @@
-"""
-Preprocessing functions for time series.
-
-All functions in this module should take X matrices with samples x
-features
-"""
+import distutils.version
 
 import numpy as np
 from scipy import signal, stats, linalg
 from sklearn.utils import gen_even_slices
 
-def _standardize(signals, normalize=True):
+np_version = distutils.version.LooseVersion(np.version.short_version).version
+
+def _standardize(signals, detrend=False, normalize=True):
     """ Center and norm a given signal (time is along first axis)
 
     Parameters
     ==========
     signals: numpy.ndarray
         Timeseries to standardize
+
+    detrend: bool
+        if detrending of timeseries is requested
 
     normalize: bool
         if True, shift timeseries to zero mean value and scale
@@ -26,40 +26,20 @@ def _standardize(signals, normalize=True):
     std_signals: numpy.ndarray
         copy of signals, normalized.
     """
-    signals = signals.copy()
+    if detrend:
+        signals = _detrend(signals, inplace=False)
+    else:
+        signals = signals.copy()
 
-    if normalize == True:
+    if normalize:
+        # remove mean if not already detrended
+        if not detrend:
+            signals -= signals.mean(axis=0)
+
         std = np.sqrt((signals ** 2).sum(axis=0))
         std[std < np.finfo(np.float).eps] = 1.  # avoid numerical problems
         signals /= std
     return signals
-
-
-def _mean_of_squares(signals):
-    """Compute mean of squares for each signal.
-    This function is equivalent to
-
-        var = np.copy(signals)
-        var **= 2
-        var = var.mean(axis=0)
-
-    but uses a lot less memory.
-
-    Parameters
-    ==========
-    signals : numpy.ndarray, shape (n_samples, n_features)
-        signal whose mean of squares must be computed.
-
-    """
-
-    # Fastest for C order
-    var = np.empty(signals.shape[1])
-    for batch in gen_even_slices(signals.shape[1], 20):
-        tvar = np.copy(signals[:, batch])
-        tvar **= 2
-        var[batch] = tvar.mean(axis=0)
-
-    return var
 
 
 def _detrend(signals, inplace=False, type="linear"):
@@ -99,7 +79,7 @@ def _detrend(signals, inplace=False, type="linear"):
         regressor -= regressor.mean()
         regressor /= np.sqrt((regressor ** 2).sum())
         regressor = regressor[:, np.newaxis]
-
+        
         # This is fastest for C order.
         for batch in gen_even_slices(signals.shape[1], 10):
             signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]
@@ -107,8 +87,98 @@ def _detrend(signals, inplace=False, type="linear"):
     return signals
 
 
+def butterworth(signals, sampling_rate, low_pass=None, high_pass=None,
+                order=5, copy=False, save_memory=False):
+    """ Apply a low-pass, high-pass or band-pass Butterworth filter
 
-def clean(signals, confounds=None,
+    Apply a filter to remove signal below the `low` frequency and above the
+    `high` frequency.
+
+    Parameters
+    ----------
+    signals: numpy.ndarray (1D sequence or n_samples x n_sources)
+        Signals to be filtered. A signal is assumed to be a column
+        of `signals`.
+
+    sampling_rate: float
+        Number of samples per time unit (sample frequency)
+
+    low_pass: float, optional
+        If specified, signals above this frequency will be filtered out
+        (low pass). This is -3dB cutoff frequency.
+
+    high_pass: float, optional
+        If specified, signals below this frequency will be filtered out
+        (high pass). This is -3dB cutoff frequency.
+
+    order: integer, optional
+        Order of the Butterworth filter. When filtering signals, the
+        filter has a decay to avoid ringing. Increasing the order
+        sharpens this decay. Be aware that very high orders could lead
+        to numerical instability.
+
+    copy: bool, optional
+        If False, `signals` is modified inplace, and memory consumption is
+        lower than for copy=True, though computation time is higher.
+
+    Returns
+    -------
+    filtered_signals: numpy.ndarray
+        Signals filtered according to the parameters
+    """
+    if low_pass is None and high_pass is None:
+        if copy:
+            return signal.copy()
+        else:
+            return signal
+
+    if low_pass is not None and high_pass is not None \
+                            and high_pass >= low_pass:
+        raise ValueError(
+            "High pass cutoff frequency (%f) is greater or equal"
+            "to low pass filter frequency (%f). This case is not handled "
+            "by this function."
+            % (high_pass, low_pass))
+
+    nyq = sampling_rate * 0.5
+
+    wn = None
+    if low_pass is not None:
+        lf = low_pass / nyq
+        btype = 'low'
+        wn = lf
+
+    if high_pass is not None:
+        hf = high_pass / nyq
+        btype = 'high'
+        wn = hf
+
+    if low_pass is not None and high_pass is not None:
+        btype = 'band'
+        wn = [hf, lf]
+
+    b, a = signal.butter(order, wn, btype=btype)
+    if signals.ndim == 1:
+        # 1D case
+        output = signal.lfilter(b, a, signals)
+        if copy:  # lfilter does a copy in all cases.
+            signals = output
+        else:
+            signals[...] = output
+    else:
+        if copy:
+            # No way to save memory when a copy has been requested,
+            # because lfilter does out-of-place processing
+            signals = signal.lfilter(b, a, signals, axis=0)
+        else:
+            # Lesser memory consumption, slower.
+            for timeseries in signals.T:
+                timeseries[:] = signal.lfilter(b, a, timeseries)
+    return signals
+
+
+
+def clean(signals, detrend=True, standardize=True, confounds=None,
           low_pass=None, high_pass=None, t_r=2.5):
     """Improve SNR on masked fMRI signals.
 
@@ -148,6 +218,12 @@ def clean(signals, confounds=None,
        low_pass, high_pass: float
            Respectively low and high cutoff frequencies, in Hertz.
 
+       detrend: bool
+           If detrending should be applied on timeseries (before
+           confound removal)
+
+       standardize: bool
+           If True, returned signals are set to unit variance.
 
        Returns
        =======
@@ -175,7 +251,7 @@ def clean(signals, confounds=None,
         # If confounds are to be removed, then force normalization to improve
         # matrix conditioning.
         normalize = True
-    signals = _standardize(signals, normalize=normalize)
+    signals = _standardize(signals, normalize=normalize, detrend=detrend)
 
     # Remove confounds
     if confounds is not None:
@@ -189,7 +265,11 @@ def clean(signals, confounds=None,
                 filename = confound
                 confound = np.genfromtxt(filename)
                 if np.isnan(confound.flat[0]):
-                    confound = np.genfromtxt(filename, skiprows=1)
+                    # There may be a header
+                    if np_version >= [1, 4, 0]:
+                        confound = np.genfromtxt(filename, skip_header=1)
+                    else:
+                        confound = np.genfromtxt(filename, skiprows=1)
                 if confound.shape[0] != signals.shape[0]:
                     raise ValueError("Confound signal has an incorrect length")
 
@@ -210,7 +290,7 @@ def clean(signals, confounds=None,
         # Restrict the signal to the orthogonal of the confounds
         confounds = np.hstack(all_confounds)
         del all_confounds
-        confounds = _standardize(confounds, normalize=True)
+        confounds = _standardize(confounds, normalize=True, detrend=detrend)
         Q = qr_economic(confounds)[0]
         signals -= np.dot(Q, np.dot(Q.T, signals))
 
@@ -218,8 +298,9 @@ def clean(signals, confounds=None,
         signals = butterworth(signals, sampling_rate=1. / t_r,
                               low_pass=low_pass, high_pass=high_pass)
 
-
-    signals = _standardize(signals, normalize=True)
-    signals *= np.sqrt(signals.shape[0])  # for unit variance
+    if standardize:
+        signals = _standardize(signals, normalize=True, detrend=False)
+        signals *= np.sqrt(signals.shape[0])  # for unit variance
 
     return signals
+
