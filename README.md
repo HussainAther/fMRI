@@ -16,6 +16,16 @@ A further task would be to compare Lasso and Ridge regression in terms of accura
 
 `python encode.py` for encoding
 
+## Requirements
+
+Nilearn (>0.4.1)
+
+Python (>3.0)
+
+Matplotlib (>2.1.0)
+
+Numpy (1.13.0)
+
 ## References
 
 Miyawaki, Y., Uchida, H., Yamashita, O., Sato, M.-A., Morito, Y., Tanabe, H. C., et al. (2008). Visual image reconstruction from human brain activity using a combination of multiscale local image decoders. Neuron 60, 915–929. doi: 10.1016/j.neuron.2008.11.004
