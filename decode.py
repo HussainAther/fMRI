@@ -45,8 +45,8 @@ for y in y_random:
     y_train.append(np.reshape(np.loadtxt(y, dtype=np.int, delimiter=','),
                               (-1,) + y_shape, order='F'))
 
-X_train = [x[2:] for x in X_train]
-y_train = [y[:-2] for y in y_train]
+X_train = [x[3:] for x in X_train]
+y_train = [y[:-3] for y in y_train]
 
 X_train = np.vstack(X_train)
 y_train = np.vstack(y_train).astype(np.float)
