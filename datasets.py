@@ -3,6 +3,9 @@
 Utilities to download NeuroImaging datasets
 """
 
+# Author: Alexandre Abraham, Philippe Gervais
+# License: simplified BSD
+
 import os
 import urllib
 import urllib.request as urllib2
