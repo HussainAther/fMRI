@@ -89,71 +89,6 @@ def _piece_read_(response, local_file, piece_size=8192,
     return
 
 
-def _get_dataset_dir(dataset_name, data_dir=None, folder=None,
-                     create_dir=True):
-    """ Create if necessary and returns data directory of given dataset.
-
-    Parameters
-    ----------
-    dataset_name: string
-        The unique name of the dataset.
-
-    data_dir: string, optional
-        Path of the data directory. Used to force data storage in a specified
-        location. Default: None
-
-    folder: string, optional
-        Folder in which the file must be fetched inside the dataset folder.
-
-    create_dir: bool, optional
-        If the directory does not exist, determine whether or not it is created
-
-    Returns
-    -------
-    data_dir: string
-        Path of the given dataset directory.
-
-    Notes
-    -----
-    This function retrieve the datasets directory (or data directory) using
-    the following priority :
-    1. the keyword argument data_dir
-    2. the environment variable NILEARN_DATA
-    3. "nilearn_data" directory into the current working directory
-    """
-    if not data_dir:
-        data_dir = os.getenv("NILEARN_DATA", os.path.join(os.getcwd(),
-                             'nilearn_data'))
-    data_dir = os.path.join(data_dir, dataset_name)
-    if folder is not None:
-        data_dir = os.path.join(data_dir, folder)
-    if not os.path.exists(data_dir) and create_dir:
-        os.makedirs(data_dir)
-    return data_dir
-
-
-def _uncompress_file(file_):
-    """Uncompress files contained in a data_set.
-
-    Parameters
-    ----------
-    file: string
-        path of file to be uncompressed.
-
-    Notes
-    -----
-    This handles zip, tar, gzip and bzip files only.
-    """
-    print('extracting data from %s...' % file_)
-    data_dir = os.path.dirname(file_)
-    tar = tarfile.open(file_, "r")
-    tar.extractall(path=data_dir)
-    tar.close()
-    processed = True
-    if not processed:
-        raise IOError("Uncompress: unknown file extension: %s" % ext)
-    os.remove(file_)
-    print('   ...done.')
 
 def _fetch_file(url, data_dir, resume=True, overwrite=False,
                verbose=0):
@@ -283,8 +218,15 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
         Absolute paths of downloaded files on disk
     """
     # Determine data path
-    data_dir = _get_dataset_dir(dataset_name, data_dir=data_dir, folder=folder)
-    
+
+    if not data_dir:
+        data_dir = os.getenv("NILEARN_DATA", os.path.join(os.getcwd(),
+                             'nilearn_data'))
+    data_dir = os.path.join(data_dir, dataset_name)
+    if folder is not None:
+        data_dir = os.path.join(data_dir, folder)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
     files_ = []
     for file_, url, opts in files:
@@ -299,7 +241,16 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
                             os.path.join(data_dir, opts['move']))
                 dl_file = os.path.join(data_dir, opts['move'])
             if 'uncompress' in opts:
-                _uncompress_file(dl_file)
+                print('extracting data from %s...' % dl_file)
+                data_dir = os.path.dirname(dl_file)
+                tar = tarfile.open(dl_file, "r")
+                tar.extractall(path=data_dir)
+                tar.close()
+                processed = True
+                if not processed:
+                    raise IOError("Uncompress: unknown file extension: %s" % ext)
+                os.remove(dl_file)
+                print('   ...done.')
         if not os.path.exists(abs_file):
             raise IOError('An error occured while fetching %s' % file_)
         files_.append(abs_file)
@@ -312,7 +263,7 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
 
 
 
-def fetch_miyawaki2008(data_dir=None, url=None, resume=True, verbose=0):
+def fetch_miyawaki(data_dir=None, url=None, resume=True, verbose=0):
     """Download and loads Miyawaki et al. 2008 dataset (153MB)
 
     Returns
@@ -422,7 +373,7 @@ def fetch_miyawaki2008(data_dir=None, url=None, resume=True, verbose=0):
                  label_figure + label_random + \
                  file_mask
 
-    files = _fetch_files('miyawaki2008', file_names, resume=resume,
+    files = _fetch_files('miyawaki', file_names, resume=resume,
                          data_dir=data_dir)
 
     # Return the data
