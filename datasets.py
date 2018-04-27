@@ -23,9 +23,10 @@ from sklearn.datasets.base import Bunch
 import nibabel
 
 
-def piece_read_(response, local_file, piece_size=8192,
-                 initial_size=0, total_size=None, verbose=0):
-    """Download a file piece by piece and show advancement
+def piece_read(response, local_file, piece_size=8192,
+                 initial_size=0, total_size=None):
+    """Download a file piece by piece. Piece is just a word used
+    to signify part of a file.
 
     Parameters
     ----------
@@ -53,10 +54,6 @@ def piece_read_(response, local_file, piece_size=8192,
     try:
         total_size = int(total_size) + initial_size
     except Exception as e:
-        if verbose > 0:
-            print("Warning: total size could not be determined.")
-            if verbose > 1:
-                print("Full stack trace: %s" % e)
         total_size = None
     bytes_so_far = initial_size
 
@@ -73,100 +70,7 @@ def piece_read_(response, local_file, piece_size=8192,
     return
 
 
-
-def _fetch_file(url, data_dir, resume=True, overwrite=False,
-               verbose=0):
-    """Load requested file, downloading it if needed or requested.
-
-    Parameters
-    ----------
-    url: string
-        Contains the url of the file to be downloaded.
-
-    data_dir: string, optional
-        Path of the data directory. Used to force data storage in a specified
-        location. Default: None
-
-    resume: bool, optional
-        If true, try to resume partially downloaded files
-
-    overwrite: bool, optional
-        If true and file already exists, delete it.
-
-
-    verbose: int, optional
-        Defines the level of verbosity of the output
-
-    Returns
-    -------
-    files: string
-        Absolute path of downloaded file.
-
-    Notes
-    -----
-    If, for any reason, the download procedure fails, all downloaded files are
-    removed.
-    """
-    # Determine data path
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-
-    file_name = os.path.basename(url)
-    # Eliminate vars if needed
-    file_name = file_name.split('?')[0]
-    temp_file_name = file_name + ".part"
-    full_name = os.path.join(data_dir, file_name)
-    temp_full_name = os.path.join(data_dir, temp_file_name)
-    if os.path.exists(full_name):
-        if overwrite:
-            os.remove(full_name)
-        else:
-            return full_name
-    if os.path.exists(temp_full_name):
-        if overwrite:
-            os.remove(temp_full_name)
-    t0 = time.time()
-    local_file = None
-    initial_size = 0
-    try:
-        # Download data
-        print('Downloading data from %s ...' % url)
-        if resume and os.path.exists(temp_full_name):
-            local_file = open(temp_full_name, "ab")
-            initial_size = local_file_size
-        else:
-            data = urllib2.urlopen(url)
-            local_file = open(temp_full_name, "wb")
-        piece_read_(data, local_file,
-                     initial_size=initial_size, verbose=verbose)
-        # temp file must be closed prior to the move
-        if not local_file.closed:
-            local_file.close()
-        shutil.move(temp_full_name, full_name)
-        dt = time.time() - t0
-        print('...done. (%i seconds, %i min)' % (dt, dt / 60))
-    except urllib2.HTTPError as e:
-        print('Error while fetching file %s.' \
-            ' Dataset fetching aborted.' % file_name)
-        if verbose > 0:
-            print("HTTP Error:", e, url)
-        raise
-    except urllib2.URLError as e:
-        print('Error while fetching file %s.' \
-            ' Dataset fetching aborted.' % file_name)
-        if verbose > 0:
-            print("URL Error:", e, url)
-        raise
-    finally:
-        if local_file is not None:
-            if not local_file.closed:
-                local_file.close()
-
-    return full_name
-
-
-def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
-                 verbose=0):
+def get_files(dataset_name, files, data_dir=None, resume=True, folder=None):
     """Load requested dataset, downloading it if needed or requested.
     Parameters
     ----------
@@ -205,9 +109,49 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
         # Download the file if it exists
         abs_file = os.path.join(data_dir, file_)
         if not os.path.exists(abs_file):
+       
+            # Determine data path
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
 
-            dl_file = _fetch_file(url, data_dir, resume=resume,
-                                  verbose=verbose)
+            file_name = os.path.basename(url)
+            # Eliminate vars if needed
+            file_name = file_name.split('?')[0]
+            temp_file_name = file_name + ".part"
+            full_name = os.path.join(data_dir, file_name)
+            temp_full_name = os.path.join(data_dir, temp_file_name)
+            if not os.path.exists(full_name):
+                t0 = time.time()
+                local_file = None
+                initial_size = 0
+                try:
+                    # Download data
+                    print('Downloading data from %s ...' % url)
+                    data = urllib2.urlopen(url)
+                    local_file = open(temp_full_name, "wb")
+                    piece_read(data, local_file,
+                                 initial_size=initial_size)
+                    # temp file must be closed prior to the move
+                    if not local_file.closed:
+                        local_file.close()
+                    shutil.move(temp_full_name, full_name)
+                    dt = time.time() - t0
+                    print('...done. (%i seconds, %i min)' % (dt, dt / 60))
+                except urllib2.HTTPError as e:
+                    print('Error while fetching file %s.' \
+                        ' Dataset fetching aborted.' % file_name)
+                    raise
+                except urllib2.URLError as e:
+                    print('Error while fetching file %s.' \
+                        ' Dataset fetching aborted.' % file_name)
+                    raise
+                finally:
+                    if local_file is not None:
+                        if not local_file.closed:
+                            local_file.close()
+            dl_file = full_name
+       
+            
             print('extracting data from %s...' % dl_file)
             data_dir = os.path.dirname(dl_file)
             tar = tarfile.open(dl_file, "r")
@@ -230,7 +174,7 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
 
 
 
-def fetch_miyawaki(data_dir=None, url=None, resume=True, verbose=0):
+def get_miyawaki(data_dir=None, url=None, resume=True):
     """Download and loads Miyawaki et al. 2008 dataset (153MB)
 
     Returns
@@ -340,7 +284,7 @@ def fetch_miyawaki(data_dir=None, url=None, resume=True, verbose=0):
                  label_figure + label_random + \
                  file_mask
 
-    files = _fetch_files('miyawaki', file_names, resume=resume,
+    files = get_files('miyawaki', file_names, resume=resume,
                          data_dir=data_dir)
 
     # Return the data

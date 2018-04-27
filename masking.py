@@ -19,10 +19,10 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
 
     Parameters
     -----------
-    niimgs: list of 4D nifti images
+    niimgs: list of 4D nifti images (x, y, z, time)
         Images to be masked. list of lists of 3D images are also accepted.
 
-    mask_img: niimg
+    mask_img: niimg (x, y, z)
         3D mask array: True where a voxel should be used.
 
     ensure_finite: bool
