@@ -19,7 +19,7 @@ bluegreen = LinearSegmentedColormap('bluegreen', {
 
 ### Load the Miyawaki dataset #####################################################
 import datasets
-dataset = datasets.fetch_miyawaki()
+dataset = datasets.get_miyawaki()
 
 # Keep only random runs
 X_random = dataset.func[12:]
