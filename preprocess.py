@@ -6,7 +6,7 @@ from sklearn.utils import gen_even_slices
 
 np_version = distutils.version.LooseVersion(np.version.short_version).version
 
-def _standardize(signals, detrend=False, normalize=True):
+def standardize(signals, detrend=False, normalize=True):
     """ Center and norm a given signal (time is along first axis)
 
     Parameters
@@ -26,8 +26,21 @@ def _standardize(signals, detrend=False, normalize=True):
     std_signals: numpy.ndarray
         copy of signals, normalized.
     """
-    if detrend:
-        signals = _detrend(signals, inplace=False)
+    if detrend:    
+        signals = signals.copy()
+
+        signals -= np.mean(signals, axis=0)
+        if type == "linear":
+            # Keeping "signals" dtype avoids some type conversion further down,
+            # and can save a lot of memory if dtype is single-precision.
+            regressor = np.arange(signals.shape[0], dtype=signals.dtype)
+            regressor -= regressor.mean()
+            regressor /= np.sqrt((regressor ** 2).sum())
+            regressor = regressor[:, np.newaxis]
+
+            # This is fastest for C order.
+            for batch in gen_even_slices(signals.shape[1], 10):
+                signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]) * regressor
     else:
         signals = signals.copy()
 
@@ -40,142 +53,6 @@ def _standardize(signals, detrend=False, normalize=True):
         std[std < np.finfo(np.float).eps] = 1.  # avoid numerical problems
         signals /= std
     return signals
-
-
-def _detrend(signals, inplace=False, type="linear"):
-    """Detrend columns of input array.
-
-    Signals are supposed to be columns of `signals`.
-    This function is significantly faster than scipy.signal.detrend on this
-    case and uses a lot less memory.
-
-    Parameters
-    ==========
-    signals : numpy.ndarray
-        This parameter must be two-dimensional.
-        Signals to detrend. A signal is a column.
-
-    inplace : bool, optional
-        Tells if the computation must be made inplace or not (default
-        False).
-
-    type : str, optional
-        Detrending type ("linear" or "constant").
-        See also scipy.signal.detrend.
-
-    Returns
-    =======
-    detrended_signals: numpy.ndarray
-        Detrended signals. The shape is that of 'signals'.
-    """
-    if not inplace:
-        signals = signals.copy()
-
-    signals -= np.mean(signals, axis=0)
-    if type == "linear":
-        # Keeping "signals" dtype avoids some type conversion further down,
-        # and can save a lot of memory if dtype is single-precision.
-        regressor = np.arange(signals.shape[0], dtype=signals.dtype)
-        regressor -= regressor.mean()
-        regressor /= np.sqrt((regressor ** 2).sum())
-        regressor = regressor[:, np.newaxis]
-        
-        # This is fastest for C order.
-        for batch in gen_even_slices(signals.shape[1], 10):
-            signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]
-                                        ) * regressor
-    return signals
-
-
-def butterworth(signals, sampling_rate, low_pass=None, high_pass=None,
-                order=5, copy=False, save_memory=False):
-    """ Apply a low-pass, high-pass or band-pass Butterworth filter
-
-    Apply a filter to remove signal below the `low` frequency and above the
-    `high` frequency.
-
-    Parameters
-    ----------
-    signals: numpy.ndarray (1D sequence or n_samples x n_sources)
-        Signals to be filtered. A signal is assumed to be a column
-        of `signals`.
-
-    sampling_rate: float
-        Number of samples per time unit (sample frequency)
-
-    low_pass: float, optional
-        If specified, signals above this frequency will be filtered out
-        (low pass). This is -3dB cutoff frequency.
-
-    high_pass: float, optional
-        If specified, signals below this frequency will be filtered out
-        (high pass). This is -3dB cutoff frequency.
-
-    order: integer, optional
-        Order of the Butterworth filter. When filtering signals, the
-        filter has a decay to avoid ringing. Increasing the order
-        sharpens this decay. Be aware that very high orders could lead
-        to numerical instability.
-
-    copy: bool, optional
-        If False, `signals` is modified inplace, and memory consumption is
-        lower than for copy=True, though computation time is higher.
-
-    Returns
-    -------
-    filtered_signals: numpy.ndarray
-        Signals filtered according to the parameters
-    """
-    if low_pass is None and high_pass is None:
-        if copy:
-            return signal.copy()
-        else:
-            return signal
-
-    if low_pass is not None and high_pass is not None \
-                            and high_pass >= low_pass:
-        raise ValueError(
-            "High pass cutoff frequency (%f) is greater or equal"
-            "to low pass filter frequency (%f). This case is not handled "
-            "by this function."
-            % (high_pass, low_pass))
-
-    nyq = sampling_rate * 0.5
-
-    wn = None
-    if low_pass is not None:
-        lf = low_pass / nyq
-        btype = 'low'
-        wn = lf
-
-    if high_pass is not None:
-        hf = high_pass / nyq
-        btype = 'high'
-        wn = hf
-
-    if low_pass is not None and high_pass is not None:
-        btype = 'band'
-        wn = [hf, lf]
-
-    b, a = signal.butter(order, wn, btype=btype)
-    if signals.ndim == 1:
-        # 1D case
-        output = signal.lfilter(b, a, signals)
-        if copy:  # lfilter does a copy in all cases.
-            signals = output
-        else:
-            signals[...] = output
-    else:
-        if copy:
-            # No way to save memory when a copy has been requested,
-            # because lfilter does out-of-place processing
-            signals = signal.lfilter(b, a, signals, axis=0)
-        else:
-            # Lesser memory consumption, slower.
-            for timeseries in signals.T:
-                timeseries[:] = signal.lfilter(b, a, timeseries)
-    return signals
-
 
 
 def clean(signals, detrend=True, standardize=True, confounds=None,
@@ -251,7 +128,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # If confounds are to be removed, then force normalization to improve
         # matrix conditioning.
         normalize = True
-    signals = _standardize(signals, normalize=normalize, detrend=detrend)
+    signals = standardize(signals, normalize=normalize, detrend=detrend)
 
     # Remove confounds
     if confounds is not None:
@@ -290,7 +167,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # Restrict the signal to the orthogonal of the confounds
         confounds = np.hstack(all_confounds)
         del all_confounds
-        confounds = _standardize(confounds, normalize=True, detrend=detrend)
+        confounds = standardize(confounds, normalize=True, detrend=detrend)
         Q = qr_economic(confounds)[0]
         signals -= np.dot(Q, np.dot(Q.T, signals))
 
@@ -299,7 +176,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
                               low_pass=low_pass, high_pass=high_pass)
 
     if standardize:
-        signals = _standardize(signals, normalize=True, detrend=False)
+        signals = standardize(signals, normalize=True, detrend=False)
         signals *= np.sqrt(signals.shape[0])  # for unit variance
 
     return signals
