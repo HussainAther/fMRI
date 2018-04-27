@@ -41,16 +41,16 @@ def apply_mask(niimgs, mask_img, dtype=np.float32,
     mask_data = mask_img.get_data().astype(bool)
     mask_affine = mask_img.get_affine()
 
-
-    if isinstance(niimgs, str):
-        niimgs = nibabel.load(niimgs)
+    # Affine transformation to preserve points from one plane to another.
     affine = niimgs.get_affine()[:3, :3]
 
+    # Check to make sure the mask affine is similar enough to the image affine.
     if not np.allclose(mask_affine, niimgs.get_affine()):
         raise ValueError('Mask affine: \n%s\n is different from img affine:'
                          '\n%s' % (str(mask_affine),
                                    str(niimgs.get_affine())))
 
+    # Check to make sure they both have the same shape.
     if not mask_data.shape == niimgs.shape[:3]:
         raise ValueError('Mask shape: %s is different from img shape:%s'
                          % (str(mask_data.shape), str(niimgs.shape[:3])))
@@ -77,18 +77,12 @@ def unmask(X, mask_img, order="C"):
         3D mask array: True where a voxel should be used.
     """
 
-    if isinstance(mask_img, str):
-        mask_img = nibabel.load(mask_img)
+    mask_img = nibabel.load(mask_img)
     mask_data = mask_img.get_data().astype(bool)
 
-    if X.ndim == 1:
-        data = np.zeros(
-            (mask_data.shape[0], mask_data.shape[1], mask_data.shape[2]),
-            dtype=X.dtype, order=order)
-        data[mask_data] = X
-        return data
-    elif X.ndim == 2:
-        data = np.zeros(mask_data.shape + (X.shape[0],), dtype=X.dtype, order=order)
-        data[mask_data, :] = X.T
-        return data
+    data = np.zeros(
+        (mask_data.shape[0], mask_data.shape[1], mask_data.shape[2]),
+        dtype=X.dtype, order=order)
+    data[mask_data] = X
+    return data
 

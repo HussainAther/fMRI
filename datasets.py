@@ -2,8 +2,6 @@
 """
 Utilities to download NeuroImaging datasets
 """
-# Author: Alexandre Abraham, Philippe Gervais
-# License: simplified BSD
 
 import os
 import urllib
@@ -25,21 +23,7 @@ from sklearn.datasets.base import Bunch
 import nibabel
 
 
-class ResumeURLOpener(urllib2.FancyURLopener):
-    """Create sub-class in order to overide error 206.  This error means a
-       partial file is being sent, which is fine in this case.
-       Do nothing with this error.
-
-       Note
-       ----
-       This was adapted from:
-       http://code.activestate.com/recipes/83208-resuming-download-of-a-file/
-    """
-    def http_error_206(self, url, fp, errcode, errmsg, headers, data=None):
-        pass
-
-
-def _piece_read_(response, local_file, piece_size=8192,
+def piece_read_(response, local_file, piece_size=8192,
                  initial_size=0, total_size=None, verbose=0):
     """Download a file piece by piece and show advancement
 
@@ -148,24 +132,12 @@ def _fetch_file(url, data_dir, resume=True, overwrite=False,
         # Download data
         print('Downloading data from %s ...' % url)
         if resume and os.path.exists(temp_full_name):
-            url_opener = ResumeURLOpener()
-            # Download has been interrupted, we try to resume it.
-            local_file_size = os.path.getsize(temp_full_name)
-            # If the file exists, then only download the remainder
-            url_opener.addheader("Range", "bytes=%s-" % (local_file_size))
-            try:
-                data = url_opener.open(url)
-            except urllib2.HTTPError:
-                # There is a problem that may be due to resuming. Switch back
-                # to complete download method
-                return _fetch_file(url, data_dir, resume=False,
-                                   overwrite=False)
             local_file = open(temp_full_name, "ab")
             initial_size = local_file_size
         else:
             data = urllib2.urlopen(url)
             local_file = open(temp_full_name, "wb")
-        _piece_read_(data, local_file,
+        piece_read_(data, local_file,
                      initial_size=initial_size, verbose=verbose)
         # temp file must be closed prior to the move
         if not local_file.closed:
@@ -236,21 +208,16 @@ def _fetch_files(dataset_name, files, data_dir=None, resume=True, folder=None,
 
             dl_file = _fetch_file(url, data_dir, resume=resume,
                                   verbose=verbose)
-            if 'move' in opts:
-                shutil.move(os.path.join(data_dir, dl_file),
-                            os.path.join(data_dir, opts['move']))
-                dl_file = os.path.join(data_dir, opts['move'])
-            if 'uncompress' in opts:
-                print('extracting data from %s...' % dl_file)
-                data_dir = os.path.dirname(dl_file)
-                tar = tarfile.open(dl_file, "r")
-                tar.extractall(path=data_dir)
-                tar.close()
-                processed = True
-                if not processed:
-                    raise IOError("Uncompress: unknown file extension: %s" % ext)
-                os.remove(dl_file)
-                print('   ...done.')
+            print('extracting data from %s...' % dl_file)
+            data_dir = os.path.dirname(dl_file)
+            tar = tarfile.open(dl_file, "r")
+            tar.extractall(path=data_dir)
+            tar.close()
+            processed = True
+            if not processed:
+                raise IOError("Uncompress: unknown file extension: %s" % ext)
+            os.remove(dl_file)
+            print('   ...done.')
         if not os.path.exists(abs_file):
             raise IOError('An error occured while fetching %s' % file_)
         files_.append(abs_file)
