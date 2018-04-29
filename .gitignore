@@ -17,6 +17,7 @@ output/svc*
 output/logr_coef.npy
 output/linR_scores.npy
 output/logR_scores.npy
+output/decoding*
 
 .DS_Store
 __pycache__/
