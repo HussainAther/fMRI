@@ -6,41 +6,42 @@ from sklearn.utils import gen_even_slices
 
 np_version = distutils.version.LooseVersion(np.version.short_version).version
 
-def standardize(signals, detrend=False, normalize=True):
+def _standard(signals, detrend=False, normalize=True):
     """ Center and norm a given signal (time is along first axis)
-
     Parameters
     ==========
     signals: numpy.ndarray
         Timeseries to standardize
-
     detrend: bool
         if detrending of timeseries is requested
-
     normalize: bool
         if True, shift timeseries to zero mean value and scale
         to unit energy (sum of squares).
-
     Returns
     =======
     std_signals: numpy.ndarray
         copy of signals, normalized.
     """
-    if detrend:    
+    if detrend:
         signals = signals.copy()
-
         signals -= np.mean(signals, axis=0)
-        if type == "linear":
-            # Keeping "signals" dtype avoids some type conversion further down,
-            # and can save a lot of memory if dtype is single-precision.
-            regressor = np.arange(signals.shape[0], dtype=signals.dtype)
-            regressor -= regressor.mean()
-            regressor /= np.sqrt((regressor ** 2).sum())
-            regressor = regressor[:, np.newaxis]
+        # Keeping "signals" dtype avoids some type conversion further down,
+        # and can save a lot of memory if dtype is single-precision.
+        regressor = np.arange(signals.shape[0], dtype=signals.dtype)
+        regressor -= regressor.mean()
+        regressor /= np.sqrt((regressor ** 2).sum())
+        regressor = regressor[:, np.newaxis]
 
-            # This is fastest for C order.
-            for batch in gen_even_slices(signals.shape[1], 10):
-                signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]) * regressor
+        # No batching for small arrays
+        if signals.shape[1] < 500:
+            n_batches = 1
+        else:
+            n_batches = 10
+        # This is fastest for C order.
+        for batch in gen_even_slices(signals.shape[1], 10):
+            signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]
+                                        ) * regressor
+    
     else:
         signals = signals.copy()
 
@@ -128,7 +129,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # If confounds are to be removed, then force normalization to improve
         # matrix conditioning.
         normalize = True
-    signals = standardize(signals, normalize=normalize, detrend=detrend)
+    signals = _standard(signals, normalize=normalize, detrend=detrend)
 
     # Remove confounds
     if confounds is not None:
@@ -167,7 +168,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
         # Restrict the signal to the orthogonal of the confounds
         confounds = np.hstack(all_confounds)
         del all_confounds
-        confounds = standardize(confounds, normalize=True, detrend=detrend)
+        confounds = _standard(confounds, normalize=True, detrend=detrend)
         Q = qr_economic(confounds)[0]
         signals -= np.dot(Q, np.dot(Q.T, signals))
 
@@ -176,7 +177,7 @@ def clean(signals, detrend=True, standardize=True, confounds=None,
                               low_pass=low_pass, high_pass=high_pass)
 
     if standardize:
-        signals = standardize(signals, normalize=True, detrend=False)
+        signals = _standard(signals, normalize=True, detrend=False)
         signals *= np.sqrt(signals.shape[0])  # for unit variance
 
     return signals
