@@ -27,10 +27,10 @@ def _standard(signals, detrend=False, normalize=True):
         signals -= np.mean(signals, axis=0)
         # Keeping "signals" dtype avoids some type conversion further down,
         # and can save a lot of memory if dtype is single-precision.
-        regressor = np.arange(signals.shape[0], dtype=signals.dtype)
-        regressor -= regressor.mean()
-        regressor /= np.sqrt((regressor ** 2).sum())
-        regressor = regressor[:, np.newaxis]
+        reg = np.arange(signals.shape[0], dtype=signals.dtype)
+        reg -= reg.mean()
+        reg /= np.sqrt((reg ** 2).sum())
+        reg = reg[:, np.newaxis]
 
         # No batching for small arrays
         if signals.shape[1] < 500:
@@ -39,8 +39,8 @@ def _standard(signals, detrend=False, normalize=True):
             n_batches = 10
         # This is fastest for C order.
         for batch in gen_even_slices(signals.shape[1], 10):
-            signals[:, batch] -= np.dot(regressor[:, 0], signals[:, batch]
-                                        ) * regressor
+            signals[:, batch] -= np.dot(reg[:, 0], signals[:, batch]
+                                        ) * reg
     
     else:
         signals = signals.copy()
